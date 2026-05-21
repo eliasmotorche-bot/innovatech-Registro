@@ -318,7 +318,7 @@
         document.onkeydown = function(e) { if(e.keyCode == 123) return false; if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; }
         document.addEventListener('contextmenu', event => event.preventDefault());
 
-        // PERFILES
+        // PERFILES (CLAVES ENCRIPTADAS BASE64)
         const _k1 = "MTI1ODk2Mw=="; // Jefe: 1258963
         const _k2 = "MjAyNg==";     // Empleada: 2026
         const _k3 = "MTI1ODc0";     // Programador: 125874
@@ -330,22 +330,20 @@
         let carrito = [];
         let filtroBusquedaActual = "TODOS";
 
-        // ==========================================
-        // REEMPLAZO: CONFIGURACIÓN DE FIREBASE EN TIEMPO REAL
-        // ==========================================
+        // ==========================================================
+        // IMPORTANTE: REEMPLAZA EL LINK ABAJO CON TU URL DE FIREBASE
+        // ==========================================================
         const firebaseConfig = {
-            databaseURL: "https://innovatech-bfa82-default-rtdb.firebaseio.com"
+            databaseURL: "https://INSERTA-AQUI-EL-LINK-DE-TU-FIREBASE.firebaseio.com"
         };
         
-        // Inicializar Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-
         const inputTasa = document.getElementById('tasaDia');
 
         function ajustarAnchoTasa(el) { el.style.width = ((el.value.length + 1) * 9) + "px"; }
 
-        // Escuchar cambios en la base de datos central en tiempo real
+        // ESCUCHADOR REALTIME CENTRALIZADO
         db.ref().on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
@@ -353,7 +351,6 @@
                 ventas = data.ventas || [];
                 tasa = data.tasa || 40;
                 
-                // Actualizar elementos visuales al recibir datos nuevos
                 inputTasa.value = tasa;
                 ajustarAnchoTasa(inputTasa);
                 actualizarDashboard();
@@ -371,7 +368,6 @@
                 tasa: tasa
             });
         }
-        // ==========================================
 
         function verificarAcceso() {
             const raw = document.getElementById('passInput').value;
@@ -419,7 +415,6 @@
                         const escala = maxAncho / img.width;
                         canvas.width = maxAncho;
                         canvas.height = img.height * escala;
-                        
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                         resolve(canvas.toDataURL('image/jpeg', 0.7));
@@ -442,9 +437,7 @@
             if(!cod || !nom || isNaN(stk) || isNaN(pre)) return alert("⚠️ Datos incompletos");
 
             let fotoBase64 = "";
-            if(fotoFile) {
-                fotoBase64 = await redimensionarImagen(fotoFile);
-            }
+            if(fotoFile) { fotoBase64 = await redimensionarImagen(fotoFile); }
 
             inventario.push({ codigo: cod, nombre: nom, color: col, stock: stk, costo: cos, precio: pre, foto: fotoBase64 });
             escribirNube();
@@ -459,19 +452,11 @@
         function buscarPieza() {
             const q = document.getElementById('inputBusqueda').value.toUpperCase();
             const res = document.getElementById('resultadosBusqueda');
-            
-            if(!q && filtroBusquedaActual === "TODOS") {
-                res.innerHTML = '';
-                return;
-            }
-
+            if(!q && filtroBusquedaActual === "TODOS") { res.innerHTML = ''; return; }
             res.innerHTML = ''; 
             let filtrados = inventario;
-            if(filtroBusquedaActual === "BAJO") {
-                filtrados = inventario.filter(p => p.stock > 0 && p.stock < 3);
-            } else if(filtroBusquedaActual === "AGOTADO") {
-                filtrados = inventario.filter(p => p.stock <= 0);
-            }
+            if(filtroBusquedaActual === "BAJO") { filtrados = inventario.filter(p => p.stock > 0 && p.stock < 3); } 
+            else if(filtroBusquedaActual === "AGOTADO") { filtrados = inventario.filter(p => p.stock <= 0); }
 
             filtrados.filter(p => p && (p.codigo.includes(q) || p.nombre.includes(q))).forEach(p => {
                 res.innerHTML += `
@@ -490,13 +475,11 @@
         function agregarAlCarrito(codigo, color) {
             const p = inventario.find(i => i && i.codigo === codigo && i.color === color);
             if(!p || p.stock <= 0) return alert("❌ Sin Stock disponible");
-            
             const item = carrito.find(c => c.codigo === codigo && c.color === color);
             if(item) { 
                 if(item.cantidad < p.stock) item.cantidad++; 
                 else alert("Límite de Stock alcanzado"); 
-            }
-            else carrito.push({...p, cantidad: 1});
+            } else carrito.push({...p, cantidad: 1});
             renderCarrito();
         }
 
@@ -535,13 +518,10 @@
             const metodo = document.getElementById('metodoPago').value;
             const contenedor = document.getElementById('contenedorReferencia');
             const inputRef = document.getElementById('metodoReferencia');
-            
             if (metodo === "EFECTIVO $" || metodo === "EFECTIVO BS") {
                 contenedor.classList.add('hidden');
                 inputRef.value = "";
-            } else {
-                contenedor.classList.remove('hidden');
-            }
+            } else { contenedor.classList.remove('hidden'); }
         }
 
         function procesarVenta() {
@@ -572,7 +552,7 @@
 
             const nuevaVenta = { 
                 fecha: new Date().toLocaleString(), 
-                fechaISO: new Date().toLocaleDateString(), 
+                fechaISO: new Date().toISOString().split('T')[0], // FECHA FIJA ISO PARA REALTIME
                 cliente: cli, 
                 totalUSD: total.toFixed(2), 
                 costoUSD: costoTotalVenta.toFixed(2),
@@ -586,8 +566,8 @@
             escribirNube();
             
             const totalBsFormated = (total * tasa).toLocaleString('de-DE', {minimumFractionDigits: 2});
-            let txtRef = ref ? `\n🔢 *Referencia:* ${ref}` : '';
-            const rawRecibo = `📦 *INNOVATECH - NOTA DE ENTREGA*\n👤 *Cliente:* ${cli}\n📅 *Fecha:* ${nuevaVenta.fecha}\n💳 *Método:* ${metodo}${txtRef}\n----------------------------\n${itemsTexto}----------------------------\n💵 *Total USD:* ${total.toFixed(2)} $\n🇻🇪 *Total Bs:* ${totalBsFormated} Bs.\n_(Tasa Ref: ${tasa.toFixed(2)} Bs.)_\n\n¡Gracias por su compra!`;
+            let txtRef = ref ? `\\n🔢 *Referencia:* ${ref}` : '';
+            const rawRecibo = `📦 *INNOVATECH - NOTA DE ENTREGA*\\n👤 *Cliente:* ${cli}\\n📅 *Fecha:* ${nuevaVenta.fecha}\\n💳 *Método:* ${metodo}${txtRef}\\n----------------------------\\n${itemsTexto}----------------------------\\n💵 *Total USD:* ${total.toFixed(2)} $\\n🇻🇪 *Total Bs:* ${totalBsFormated} Bs.\\n_(Tasa Ref: ${tasa.toFixed(2)} Bs.)_\\n\\n¡Gracias por su compra!`;
             
             document.getElementById('textoReciboRaw').value = rawRecibo;
             document.getElementById('modalRecibo').classList.add('modal-active');
@@ -620,10 +600,7 @@
                         </tr>`;
                 });
             } else {
-                filasProductos = `
-                    <tr class="border-b border-slate-100 text-xs text-slate-700">
-                        <td class="py-2" colspan="4">Registro de venta empaquetado global</td>
-                    </tr>`;
+                filasProductos = `<tr class="border-b border-slate-100 text-xs text-slate-700"><td class="py-2" colspan="4">Registro empaquetado</td></tr>`;
             }
 
             const totalBsFormated = (parseFloat(venta.totalUSD) * tasa).toLocaleString('de-DE', {minimumFractionDigits: 2});
@@ -649,9 +626,7 @@
                             <th style="padding-bottom: 6px; text-align: right; width: 20%;">Total</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${filasProductos}
-                    </tbody>
+                    <tbody>${filasProductos}</tbody>
                 </table>
                 <div style="border-top: 2px dashed #e2e8f0; padding-top: 15px; text-align: right;">
                     <p style="margin: 0; font-size: 11px; color: #64748b; font-weight: bold;">TOTAL USD</p>
@@ -659,23 +634,14 @@
                     <p style="margin: 0; font-size: 11px; color: #64748b; font-weight: bold;">TOTAL BS</p>
                     <p style="margin: 0; font-size: 16px; font-weight: 800; color: #2563eb;">${totalBsFormated} Bs.</p>
                     <p style="margin: 4px 0 0 0; font-size: 9px; color: #94a3b8; font-style: italic;">Ref. Tasa: ${tasa.toFixed(2)} Bs.</p>
-                </div>
-                <div style="text-align: center; margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
-                    <p style="font-size: 10px; color: #94a3b8; font-weight: bold; margin: 0;">¡Gracias por su confianza y preferencia!</p>
-                </div>
-            `;
+                </div>`;
 
             const opcionesConfig = {
-                margin: 10,
-                filename: `Ticket_${venta.cliente.replace(/\s+/g, '_')}_${Date.now()}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, logging: false },
+                margin: 10, filename: `Ticket_${venta.cliente.replace(/\s+/g, '_')}_${Date.now()}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, logging: false },
                 jsPDF: { unit: 'mm', format: [120, 190], orientation: 'portrait' }
             };
-
-            html2pdf().set(opcionesConfig).from(element).save().then(() => {
-                enviarNotificacion("📥 PDF Descargado Exitosamente");
-            });
+            html2pdf().set(opcionesConfig).from(element).save().then(() => { enviarNotificacion("📥 PDF Descargado"); });
         }
 
         function renderInventario() {
@@ -706,9 +672,7 @@
             ventas.forEach((v, i) => {
                 if(!v) return;
                 let badgeMetodo = v.metodo || 'EFECTIVO $';
-                if (v.referencia) {
-                    badgeMetodo += ` (REF: ${v.referencia})`;
-                }
+                if (v.referencia) { badgeMetodo += ` (REF: ${v.referencia})`; }
                 container.innerHTML += `
                     <div class="bg-slate-50 p-4 rounded-2xl border">
                         <div class="flex justify-between items-start">
@@ -733,10 +697,8 @@
         function exportarExcelCSV() {
             if(!inventario.length) return alert("No hay datos para exportar");
             let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Codigo,Producto,Color,Stock,Costo USD,Precio Venta USD\n";
-            inventario.forEach(p => {
-                if(p) csvContent += `"${p.codigo}","${p.nombre}","${p.color}",${p.stock},${p.costo || 0},${p.precio}\n`;
-            });
+            csvContent += "Codigo,Producto,Color,Stock,Costo USD,Precio Venta USD\\n";
+            inventario.forEach(p => { if(p) csvContent += `"${p.codigo}","${p.nombre}","${p.color}",${p.stock},${p.costo || 0},${p.precio}\\n`; });
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
@@ -749,24 +711,20 @@
 
         function copiarReciboAlPortapapeles() {
             const rawText = document.getElementById('textoReciboRaw');
-            rawText.select();
-            rawText.setSelectionRange(0, 99999);
+            rawText.select(); rawText.setSelectionRange(0, 99999);
             navigator.clipboard.writeText(rawText.value);
             enviarNotificacion("📋 Copiado al Portapapeles");
         }
 
         function enviarWhatsAppDirecto() {
             const txt = document.getElementById('textoReciboRaw').value;
-            const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(txt)}`;
-            window.open(url, '_blank');
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(txt)}`, '_blank');
         }
 
         function respaldoMaestro() {
             const backup = {
                 metadata: { version: "3.0.0-Pro", dev: "Master", fecha: new Date().toISOString() },
-                inventario: inventario,
-                ventas: ventas,
-                config: { tasa: tasa }
+                inventario: inventario, ventas: ventas, config: { tasa: tasa }
             };
             const blob = new Blob([JSON.stringify(backup, null, 2)], {type: "application/json"});
             const a = document.createElement('a');
@@ -780,10 +738,8 @@
             if(perfilActual !== "DEV") return;
             const raw = { inventario_size: inventario.length, ventas_size: ventas.length, tasa_act: tasa };
             document.getElementById('rawViewer').innerText = JSON.stringify(raw, null, 4);
-            
             const stringInv = JSON.stringify(inventario);
-            const sizeKB = (stringInv.length / 1024).toFixed(2);
-            document.getElementById('imgWeight').innerText = sizeKB + " KB";
+            document.getElementById('imgWeight').innerText = (stringInv.length / 1024).toFixed(2) + " KB";
         }
 
         function enviarNotificacion(msg) {
@@ -795,8 +751,9 @@
             setTimeout(() => { n.style.opacity = '0'; setTimeout(() => n.remove(), 500); }, 3000);
         }
 
+        // FUNCIÓN CRÍTICA CORREGIDA PARA TIEMPO REAL MULTI-DISPOSITIVO
         function actualizarDashboard() {
-            const hoy = new Date().toLocaleDateString();
+            const hoy = new Date().toISOString().split('T')[0]; // ESTÁNDAR ISO COMPARTIDO
             const ventasHoy = ventas.filter(v => v && v.fechaISO === hoy);
             
             const totalHoy = ventasHoy.reduce((acc, v) => acc + parseFloat(v.totalUSD), 0);
@@ -848,8 +805,7 @@
                 precio: parseFloat(document.getElementById('editPrecio').value),
                 foto: f ? await redimensionarImagen(f) : inventario[i].foto
             };
-            cerrarModal(); 
-            escribirNube();
+            cerrarModal(); escribirNube();
         }
 
         function abrirEdicionVenta(i) {
@@ -866,8 +822,7 @@
             ventas[i].cliente = document.getElementById('editVentaCliente').value.toUpperCase();
             ventas[i].totalUSD = parseFloat(document.getElementById('editVentaMonto').value).toFixed(2);
             ventas[i].metodo = document.getElementById('editVentaMetodo').value;
-            cerrarModalVenta(); 
-            escribirNube();
+            cerrarModalVenta(); escribirNube();
         }
 
         function eliminarVenta(i) { if(confirm("¿Borrar venta?")) { ventas.splice(i, 1); escribirNube(); } }
@@ -877,11 +832,7 @@
         function cerrarModalRecibo() { document.getElementById('modalRecibo').classList.remove('modal-active'); }
         function cambiarPestaña(id) { document.querySelectorAll('.pestaña').forEach(p => p.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
         
-        function actualizarTasa() { 
-            tasa = parseFloat(document.getElementById('tasaDia').value); 
-            escribirNube();
-        }
-        
+        function actualizarTasa() { tasa = parseFloat(document.getElementById('tasaDia').value); escribirNube(); }
         function limpiarCarritoTotal() { carrito = []; renderCarrito(); }
     </script>
 </body>
